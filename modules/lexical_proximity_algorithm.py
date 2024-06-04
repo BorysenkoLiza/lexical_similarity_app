@@ -32,7 +32,7 @@ class LexicalProximityAlgorithm:
         calculate_similarities(signatures): Calculates and returns the pairwise similarities between documents based on their MinHash signatures.
     """
 
-    def __init__(self, docs_as_sets, num_hashes=100, similarity_threshold=0.5):
+    def __init__(self, docs_as_sets, num_hashes=100):
             """
             Initializes the LexicalProximityAlgorithm with a dictionary of documents and their shingle sets.
             
@@ -43,7 +43,6 @@ class LexicalProximityAlgorithm:
             """
             self.docs_as_sets = docs_as_sets
             self.num_hashes = num_hashes
-            self.similarity_threshold = similarity_threshold
             self.num_docs = len(docs_as_sets)
             self.max_shingle = 2**32 - 1
             self.next_prime = self.find_next_prime(self.max_shingle)

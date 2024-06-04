@@ -10,6 +10,7 @@ from modules.semantic_clusterer import SemanticClusterer
 from modules.lexical_proximity_algorithm import LexicalProximityAlgorithm
 from modules.jaccard import JaccardSimilarityCalculator
 import secrets  # To generate a secret key
+import matplotlib.pyplot as plt
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,10 @@ def upload():
     file = request.files['zipFile']
     num_clusters = request.form.get('numClusters', type=int, default=10)
     shingle_size = request.form.get('shingleSize', type=int, default=3)
+    num_hashes = request.form.get('numHashes', type=int, default=100)
+    vector_size = request.form.get('vectorSize', type=int, default=300)
+    similarity_threshold = request.form.get('similarityThreshold', type=float, default=0.5)
+
     if file.filename == '':
         return redirect(request.url)
     if file and allowed_file(file.filename):
@@ -42,7 +47,7 @@ def upload():
         zip_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(zip_path)
         extracted_folder = process_zip(zip_path)
-        process_documents(extracted_folder, num_clusters, shingle_size)
+        process_documents(extracted_folder, num_clusters, shingle_size, num_hashes, vector_size, similarity_threshold)
         return redirect(url_for('results'))
     return render_template('index.html')
 
@@ -61,7 +66,7 @@ def process_zip(zip_path):
     shutil.rmtree(temp_extract_dir)
     return extract_folder
 
-def process_documents(extract_folder, num_clusters, shingle_size):
+def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, vector_size, similarity_threshold):
     # Initialize DataLoader and load documents as sets of shingles
     logger.info("Initializing DataLoader and loading documents...")
     loader = DataLoader(extract_folder, shingle_size)
@@ -69,7 +74,7 @@ def process_documents(extract_folder, num_clusters, shingle_size):
 
     # Initialize the SemanticClusterer
     logger.info("Initializing SemanticClusterer and processing documents...")
-    clusterer = SemanticClusterer(num_clusters)
+    clusterer = SemanticClusterer(vector_size=vector_size, min_cluster=num_clusters)
     documents_df, silhouette = clusterer.process_documents(documents_df, train_new_model=False)
     logger.info("Silhouette Score: %f", silhouette)
 
@@ -86,9 +91,9 @@ def process_documents(extract_folder, num_clusters, shingle_size):
         cluster_docs_df = group[['DocID','DocName','Shingles']].copy() 
         #Convert DataFrame to dictionary format: {DocID: shingles_set, ...}
         docs_as_sets = {row['DocID']: row['Shingles'] for index, row in cluster_docs_df.iterrows()}
-        clusters[label] = list(cluster_docs_df['DocName'])  # Store document names for the cluster
+        clusters[label] = [{'DocID': row['DocID'], 'DocName': row['DocName']} for index, row in cluster_docs_df.iterrows()]  # Store both document IDs and names for the cluster
         try:
-            minhash = LexicalProximityAlgorithm(docs_as_sets, num_hashes=100, similarity_threshold=0.5)
+            minhash = LexicalProximityAlgorithm(docs_as_sets, num_hashes=num_hashes)
             signatures = minhash.generate_minhash_signatures()
             similarities = minhash.calculate_similarities(signatures)
             similar_pairs = sorted(similarities, key=lambda x: x[2], reverse=True)[:5] #top five similar pairs for cluster
@@ -96,7 +101,7 @@ def process_documents(extract_folder, num_clusters, shingle_size):
             #similarity_calculator = JaccardSimilarityCalculator(docs_as_sets)
             #jaccard_similarities = similarity_calculator.calculate_jaccard()
             for doc1, doc2, similarity in similarities:
-                if similarity > 0.1:  # Adjust threshold as needed
+                if similarity > similarity_threshold:  # Adjust threshold as needed
                     logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f}")
         except KeyError as e:
             logger.error(f"KeyError: {e} - Check if DocID is present in docs_as_sets")
