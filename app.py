@@ -21,6 +21,9 @@ app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['ALLOWED_EXTENSIONS'] = {'zip'}
 app.secret_key = secrets.token_hex(16)  # Generate a unique secret key
 
+# Global store for DataFrames
+data_store = {}
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -47,7 +50,9 @@ def upload():
         zip_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(zip_path)
         extracted_folder = process_zip(zip_path)
-        process_documents(extracted_folder, num_clusters, shingle_size, num_hashes, vector_size, similarity_threshold)
+        result_id = process_documents(extracted_folder, num_clusters, shingle_size, num_hashes, vector_size, similarity_threshold)
+        logger.info(f"Redirecting to results with result_id: {result_id}")
+        session['result_id'] = result_id  # Store result_id in session
         return redirect(url_for('results'))
     return render_template('index.html')
 
@@ -107,18 +112,28 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
             logger.error(f"KeyError: {e} - Check if DocID is present in docs_as_sets")
 
     cluster_top_terms = clusterer.get_top_terms_per_cluster()
-    session['clusters'] = {int(k): v for k, v in clusters.items()}  # Convert keys to int
-    session['cluster_top_terms'] = {int(k): v for k, v in cluster_top_terms.items()}  # Convert keys to int
-    session['cluster_similarities'] = {int(k): v for k, v in cluster_similarities.items()}  # Convert keys to int
-    session['silhouette'] = float(silhouette)
+    # Store DataFrame and results in the global store
+    result_id = secrets.token_hex(8)
+    logger.info(f"Storing results with result_id: {result_id}")
+    data_store[result_id] = {
+        'clusters': clusters,
+        'cluster_top_terms': cluster_top_terms,
+        'cluster_similarities': cluster_similarities,
+        'documents_df': documents_df
+    }
+
+    return result_id
 
 @app.route('/results')
 def results():
-    clusters = session.get('clusters', {})
-    cluster_top_terms = session.get('cluster_top_terms', {})
-    cluster_similarities = session.get('cluster_similarities', {})
-    silhouette = session.get('silhouette', 0)
-    return render_template('results.html', clusters=clusters, cluster_top_terms=cluster_top_terms, cluster_similarities=cluster_similarities, silhouette=silhouette)
+    result_id = session.get('result_id')
+    logger.info(f"Fetching results for result_id: {result_id}")
+    if result_id not in data_store:
+        logger.error(f"Results not found for result_id: {result_id}")
+        return "Results not found", 404
+
+    results = data_store[result_id]
+    return render_template('results.html', clusters=results['clusters'], cluster_top_terms=results['cluster_top_terms'], cluster_similarities=results['cluster_similarities'])
 
 if __name__ == '__main__':
     app.run(debug=True)
