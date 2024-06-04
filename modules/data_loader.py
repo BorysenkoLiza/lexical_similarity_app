@@ -2,6 +2,7 @@ import os
 import re
 import string
 import binascii
+import pandas as pd
 
 class DataLoader:
     """
@@ -32,23 +33,19 @@ class DataLoader:
         """
         self.directory = directory
         self.doc_counter = 0  # Initialize a counter for docID assignment
-        self.docs_as_sets = {}  # Dictionary to store document ID and corresponding shingles
+        self.documents_df = pd.DataFrame(columns=['DocID', 'DocName', 'DocText'])
         self.shingle_size = shingle_size
 
     def load_documents(self):
-        """
-        Loads and preprocesses each text file in the specified directory, assigning a unique document ID to each.
-        
-        Yields:
-            tuple: A tuple containing the document ID and text content for each document.
-        """
-        for filename in os.listdir(self.directory):
+        temp_data = []  # List to collect data and append in bulk to the DataFrame
+        for doc_id, filename in enumerate(os.listdir(self.directory), start=1):
             if filename.endswith(".txt"):  # Ensures only text files are processed
                 filepath = os.path.join(self.directory, filename)
                 with open(filepath, 'r', encoding='utf-8') as file:
                     text = file.read()
-                    self.doc_counter += 1  # Increment for each new document
-                    yield (self.doc_counter, text)
+                    temp_data.append({'DocID': doc_id, 'DocName': filename, 'DocText': text})
+        # Append collected data in bulk using pd.concat
+        self.documents_df = pd.concat([self.documents_df, pd.DataFrame(temp_data)], ignore_index=True)
 
     def basic_preprocess(self, text):
         """
@@ -92,10 +89,17 @@ class DataLoader:
             tuple: A tuple containing a dictionary with document IDs as keys and sets of shingles,
                    and a list of tuples with document IDs and preprocessed texts for clustering.
         """
-        texts = []
+
+        self.load_documents()
+        self.documents_df['ProcessedText'] = self.documents_df['DocText'].apply(self.basic_preprocess)
+        self.documents_df['Shingles'] = self.documents_df['ProcessedText'].apply(self.generate_shingles)
+        self.documents_df.drop(columns=['ProcessedText'], inplace=True)
+        return self.documents_df
+    
+        '''texts = []
         for docID, text in self.load_documents():
             processed_text = self.basic_preprocess(text)
             shingles = self.generate_shingles(processed_text)
             self.docs_as_sets[docID] = shingles
             texts.append((docID, processed_text))
-        return self.docs_as_sets, texts
+        return self.docs_as_sets, texts'''

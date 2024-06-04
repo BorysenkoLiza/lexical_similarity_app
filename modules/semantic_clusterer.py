@@ -45,7 +45,7 @@ class SemanticClusterer:
         get_top_terms_per_cluster(): Return the top terms for each cluster based on the cluster centroids.
         process_documents(raw_documents): Process documents from text to clusters.
     """
-    def __init__(self, vector_size=500, min_cluster=5, batch_size=500, seed=42):
+    def __init__(self, vector_size=300, min_cluster=10, batch_size=500, seed=42):
         """
         Initialize the SemanticClusterer with the specified parameters and load the pretrained Word2Vec model.
         
@@ -65,7 +65,7 @@ class SemanticClusterer:
         self.model = KeyedVectors.load_word2vec_format(
             'D:/uni/4 курс/2 семестр/Диплом/git_thesis/Lexical_proximity/modules/GoogleNews-vectors-negative300.bin',
             binary=True,
-            limit=100000
+            limit=80000
         )
         logger.info("Word2Vec model loaded successfully.")
 
@@ -207,22 +207,21 @@ class SemanticClusterer:
             logger.info(f"Cluster {i} top terms: {tokens_per_cluster}")  # Log top terms for each cluster
         return top_terms
 
-
-
-    def process_documents(self, raw_documents, train_new_model=False):
+    def process_documents(self, documents_df, train_new_model=False):
         """
-        Process documents from text to clusters.
+        Processes documents from DataFrame to clusters.
         
         Parameters:
-            raw_documents (list of str): List of document texts.
-            train_new_model (bool): Flag to indicate whether to train a new Word2Vec model.
+            documents_df (pandas.DataFrame): DataFrame with columns 'DocID' and 'DocText'.
         
         Returns:
-            tuple: Cluster labels and silhouette score.
+            pandas.DataFrame: DataFrame with additional columns for tokenized texts, vectors, and cluster labels.
         """
-        tokenized_documents = self.tokenize_documents(raw_documents)
+        documents_df['Tokens'] = documents_df['DocText'].apply(self.clean_text)
         if train_new_model:
-            self.train_word2vec_model(tokenized_documents)
-        vectors = self.vectorize_docs(tokenized_documents)
-        labels, silhouette = self.cluster_documents(vectors)
-        return labels, silhouette
+            self.train_word2vec_model(documents_df['Tokens'].tolist())
+        # Get document vectors
+        document_vectors = self.vectorize_docs(documents_df['Tokens'].tolist())
+        labels, silhouette = self.cluster_documents(document_vectors)
+        documents_df['Cluster'] = labels
+        return documents_df, silhouette
