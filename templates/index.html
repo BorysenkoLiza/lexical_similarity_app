@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Clustering Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        form { margin-top: 20px; }
+        label { display: block; margin: 15px 0 5px; }
+        input, button { padding: 10px; }
+        button { cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>Upload Documents</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label for="zipFile">Select ZIP File:</label>
+        <input type="file" id="zipFile" name="zipFile" accept=".zip" required>
+
+        <label for="numClusters">Number of Clusters:</label>
+        <input type="number" id="numClusters" name="numClusters" min="1" value="2" required>
+
+        <label for="shingleSize">Shingle Size (k):</label>
+        <input type="number" id="shingleSize" name="shingleSize" min="1" value="5" required>
+
+        <button type="submit">Upload and Process</button>
+    </form>
+</body>
+</html>
