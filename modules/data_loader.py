@@ -95,11 +95,3 @@ class DataLoader:
         self.documents_df['Shingles'] = self.documents_df['ProcessedText'].apply(self.generate_shingles)
         self.documents_df.drop(columns=['ProcessedText'], inplace=True)
         return self.documents_df
-    
-        '''texts = []
-        for docID, text in self.load_documents():
-            processed_text = self.basic_preprocess(text)
-            shingles = self.generate_shingles(processed_text)
-            self.docs_as_sets[docID] = shingles
-            texts.append((docID, processed_text))
-        return self.docs_as_sets, texts'''
