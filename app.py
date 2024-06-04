@@ -133,7 +133,51 @@ def results():
         return "Results not found", 404
 
     results = data_store[result_id]
-    return render_template('results.html', clusters=results['clusters'], cluster_top_terms=results['cluster_top_terms'], cluster_similarities=results['cluster_similarities'])
+    similar_docs = session.get('similar_docs', None)
+    file_name = session.get('file_name', None)
+    doc_names = {row['DocID']: row['DocName'] for index, row in results['documents_df'].iterrows()}
+    return render_template('results.html', clusters=results['clusters'], 
+                           cluster_top_terms=results['cluster_top_terms'], 
+                           cluster_similarities=results['cluster_similarities'], 
+                           similar_docs=similar_docs, 
+                           file_name=file_name,
+                           doc_names=doc_names)
+
+@app.route('/find_similar', methods=['POST'])
+def find_similar():
+    result_id = session.get('result_id')
+    logger.info(f"Finding similar documents for result_id: {result_id}")
+    if result_id not in data_store:
+        logger.error(f"Results not found for result_id: {result_id}")
+        return "Results not found", 404
+
+    file_name = request.form.get('fileName')
+    similarity_threshold = float(request.form.get('similarityThreshold'))
+    results = data_store[result_id]
+    documents_df = results['documents_df']
+
+    # Find the document ID and cluster for the given file name
+    doc_info = documents_df[documents_df['DocName'] == file_name]
+    if doc_info.empty:
+        logger.error(f"Document with name {file_name} not found")
+        return f"Document with name {file_name} not found", 404
+
+    doc_id = doc_info.iloc[0]['DocID']
+    cluster_id = doc_info.iloc[0]['Cluster']
+
+    logger.info(f"Document {file_name} (ID: {doc_id}) found in cluster {cluster_id}")
+
+    # Find similar documents within the cluster
+    similar_docs = []
+    for doc1, doc2, similarity in results['cluster_similarities'][cluster_id]:
+        if doc1 == doc_id or doc2 == doc_id:
+            if similarity >= similarity_threshold:
+                similar_docs.append((doc1, doc2, similarity))
+
+    session['similar_docs'] = similar_docs
+    session['file_name'] = file_name
+    logger.info(f"Document {file_name} (ID: {doc_id}) has {len(similar_docs)} similar documents")
+    return redirect(url_for('results'))
 
 if __name__ == '__main__':
     app.run(debug=True)

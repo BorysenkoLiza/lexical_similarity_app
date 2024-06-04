@@ -45,5 +45,11 @@
 
         <input type="submit" value="Upload">
     </form>
+    <div id="pleaseWaitMessage" class="please-wait">Please wait, processing the upload...</div>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function() {
+            document.getElementById('pleaseWaitMessage').style.display = 'block';
+        });
+    </script>
 </body>
 </html>

@@ -32,12 +32,35 @@
         </ul>
     </div>
     <div class="content">
+        <h1>Lexical Proximity Results</h1>
         <div id="visualization" class="tab-content visualization-section">
-            <h1>Visualization</h1>
-            <!-- Placeholder for visualization content -->
+            <form action="{{ url_for('find_similar') }}" method="POST">
+                <label for="fileName">Document Name:</label>
+                <input type="text" id="fileName" name="fileName" required>
+                <label for="similarityThreshold">Similarity Threshold:</label>
+                <input type="number" step="0.01" id="similarityThreshold" name="similarityThreshold" required>
+                <button type="submit">Find Similar Documents</button>
+            </form>
+            <!-- Placeholder for displaying similar documents -->
+            <div id="similar-documents">
+                {% if similar_docs %}
+                    <h3>Similar Documents for {{ file_name }}</h3>
+                    <table>
+                        <tr>
+                            <th>Similar Document</th>
+                            <th>Similarity Score</th>
+                        </tr>
+                        {% for doc1, doc2, similarity in similar_docs %}
+                            <tr>
+                                <td>{{ doc_names[doc1] if doc1 == file_name else doc_names[doc2] }}</td>
+                                <td>{{ similarity|round(4) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+            </div>
         </div>
         <div id="clusters" class="tab-content">
-            <h1>Lexical Proximity Results</h1>
             {% for label, docs in clusters.items() %}
                 <div id="cluster-{{ label }}" class="cluster-section">
                     <h3>Cluster {{ label }} ({{ docs|length }} documents)</h3>
@@ -52,16 +75,19 @@
                         <tr>
                             <td>
                                 <ul>
-                                {% for doc in docs %}
+                                {% for doc in docs[:10] %}
                                     <li>{{ doc['DocName'] }} (ID: {{ doc['DocID'] }})</li>
                                 {% endfor %}
+                                {% if docs|length > 10 %}
+                                    <li>... ({{ docs|length }} total)</li>
+                                {% endif %}
                                 </ul>
                             </td>
                             <td rowspan="{{ cluster_similarities[label]|length }}">{{ docs[0]['DocName'] }} (ID: {{ docs[0]['DocID'] }})</td>
                             <td>
                                 <ul>
                                     {% for doc1, doc2, similarity in cluster_similarities[label] %}
-                                        <li>Document {{ doc1 }} & Document {{ doc2 }}</li>
+                                        <li>{{ doc_names[doc1] }} & {{ doc_names[doc2] }}</li>
                                     {% endfor %}
                                 </ul>
                             </td>
