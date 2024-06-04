@@ -45,7 +45,7 @@ class SemanticClusterer:
         get_top_terms_per_cluster(): Return the top terms for each cluster based on the cluster centroids.
         process_documents(raw_documents): Process documents from text to clusters.
     """
-    def __init__(self, vector_size=100, min_cluster=10, batch_size=500, seed=42):
+    def __init__(self, vector_size=500, min_cluster=5, batch_size=500, seed=42):
         """
         Initialize the SemanticClusterer with the specified parameters and load the pretrained Word2Vec model.
         
@@ -80,38 +80,81 @@ class SemanticClusterer:
         Returns:
             list: Tokenized text.
         """
-        text = str(text).lower()  # Lowercase words
-        # Remove specific unwanted patterns
-        text = re.sub(r"\[(.*?)\]", "", text)  # Remove [+XYZ chars] in content
+        text = str(text).lower() 
+        text = re.sub(r"\[(.*?)\]", r"\1", text)  # Remove brackets but keep the text inside
         text = re.sub(r"\s+", " ", text)  # Remove multiple spaces in content
         text = re.sub(r"\w+…|…", "", text)  # Remove ellipsis (and last word)
-        text = re.sub(r"(?<=\w)-(?=\w)", " ", text)  # Replace dash between words
-        text = re.sub(
-            f"[{re.escape(string.punctuation)}]", "", text
-        )  # Remove punctuation
+        text = re.sub(r"(?<=\w)-(?=\w)", " ", text)  # Replace dash between words   
+        text = re.sub(f"[{re.escape(string.punctuation)}]", "", text)  # Remove punctuation
         tokens = word_tokenize(text)  # Get tokens from text
-        tokens = [t for t in tokens if not t in self.stopwords]  # Remove stopwords
+        tokens = [t for t in tokens if t not in self.stopwords]  # Remove stopwords
         tokens = ["" if t.isdigit() else t for t in tokens]  # Remove digits
         tokens = [t for t in tokens if len(t) > 1]  # Remove short tokens
         return tokens
+    
+    def tokenize_documents(self, documents):
+        tokenized_docs = [self.clean_text(doc) for doc in documents]
+        return tokenized_docs
 
-    def vectorize_docs(self, documents):
+    def vectorize_docs(self, tokenized_documents, strategy="average"):
         """
         Convert tokenized documents into vectors using the Word2Vec model.
         
         Parameters:
-            documents (list of list of str): Tokenized documents.
+            tokenized_documents (list of list of str): Tokenized documents.
+            strategy (str): Aggregation strategy ("average", or "min-max").
         
         Returns:
-            np.array: Array of document vectors.
+            list: List of document vectors.
         """
-        vectors = []
-        for doc in documents:
-            tokens = self.clean_text(doc)
-            vec = np.mean([self.model[word] for word in tokens if word in self.model] or [np.zeros(self.vector_size)], axis=0)
-            vectors.append(vec)
-        logger.info("Documents vectorized successfully.")
-        return np.array(vectors)
+        features = []
+        size_output = self.model.vector_size
+        embedding_dict = self.model
+
+        if strategy == "min-max":
+            size_output *= 2
+
+        if hasattr(self.model, "wv"):
+            embedding_dict = self.model.wv
+
+        for tokens in tokenized_documents:
+            zero_vector = np.zeros(size_output)
+            vectors = []
+            for token in tokens:
+                if token in embedding_dict:
+                    try:
+                        vectors.append(embedding_dict[token])
+                    except KeyError:
+                        continue
+            if vectors:
+                vectors = np.asarray(vectors)
+                if strategy == "min-max":
+                    min_vec = vectors.min(axis=0)
+                    max_vec = vectors.max(axis=0)
+                    features.append(np.concatenate((min_vec, max_vec)))
+                elif strategy == "average":
+                    avg_vec = vectors.mean(axis=0)
+                    features.append(avg_vec)
+                else:
+                    raise ValueError(f"Aggregation strategy {strategy} does not exist!")
+            else:
+                features.append(zero_vector)
+        return features
+    
+    def train_word2vec_model(self, tokenized_documents):
+        """
+        Train a Word2Vec model on the provided tokenized documents.
+        
+        Parameters:
+            tokenized_documents (list of list of str): Tokenized documents.
+        
+        Returns:
+            Word2Vec: Trained Word2Vec model.
+        """
+        model = Word2Vec(sentences=tokenized_documents, vector_size=self.vector_size, workers=1, seed=self.seed)
+        self.model = model.wv
+        logger.info("Word2Vec model trained successfully.")
+        return model
 
     def cluster_documents(self, vectors):
         """
@@ -157,7 +200,7 @@ class SemanticClusterer:
         top_terms = {}
         for i in range(self.min_cluster):
             tokens_per_cluster = []
-            most_representative = self.model.similar_by_vector(self.km.cluster_centers_[i], topn=5)
+            most_representative = self.model.similar_by_vector(self.km.cluster_centers_[i], topn=10)
             for t in most_representative:
                 tokens_per_cluster.append(t[0])
             top_terms[i] = tokens_per_cluster
@@ -166,16 +209,20 @@ class SemanticClusterer:
 
 
 
-    def process_documents(self, raw_documents):
+    def process_documents(self, raw_documents, train_new_model=False):
         """
         Process documents from text to clusters.
         
         Parameters:
             raw_documents (list of str): List of document texts.
+            train_new_model (bool): Flag to indicate whether to train a new Word2Vec model.
         
         Returns:
             tuple: Cluster labels and silhouette score.
         """
-        vectors = self.vectorize_docs(raw_documents)
+        tokenized_documents = self.tokenize_documents(raw_documents)
+        if train_new_model:
+            self.train_word2vec_model(tokenized_documents)
+        vectors = self.vectorize_docs(tokenized_documents)
         labels, silhouette = self.cluster_documents(vectors)
         return labels, silhouette
