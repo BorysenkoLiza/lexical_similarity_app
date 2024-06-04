@@ -56,7 +56,7 @@ else:
                 logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f}")
 cluster_top_terms = clusterer.get_top_terms_per_cluster()
 
-'''# Jaccard similarity for comparison
+# Jaccard similarity for comparison
 logger.info("Calculating Jaccard similarities for comparison...")
 similarity_calculator = JaccardSimilarityCalculator(docs_as_sets)
 
@@ -66,4 +66,4 @@ jaccard_similarities = similarity_calculator.calculate_jaccard()
 # Print the results
 for doc_pair in jaccard_similarities:
     if doc_pair[2] > 0.1:
-        logger.info(f"Jaccard similarity between {doc_pair[0]} and {doc_pair[1]}: {doc_pair[2]:.8f}")'''
+        logger.info(f"Jaccard similarity between {doc_pair[0]} and {doc_pair[1]}: {doc_pair[2]:.8f}")
