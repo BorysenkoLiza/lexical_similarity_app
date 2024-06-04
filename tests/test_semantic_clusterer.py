@@ -43,9 +43,7 @@ class TestSemanticClusterer(unittest.TestCase):
 
     def test_vectorize_docs(self):
         vectors = self.clusterer.vectorize_docs(self.documents)
-        print(vectors)
         self.assertEqual(vectors.shape, (len(self.documents), 300))
-
 
 if __name__ == "__main__":
     unittest.main()

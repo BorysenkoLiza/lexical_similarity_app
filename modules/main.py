@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Path to the directory containing the text documents
-directory_path = "D:/uni/4 курс/2 семестр/Диплом/datasets/corpus/corpus/wikipedia_documents_test/machined/data5"
-shingle_size = 3  # Shingle size for generating shingles
+directory_path = "D:/uni/4 курс/2 семестр/Диплом/git_thesis/bbc_data"
+shingle_size = 5  # Shingle size for generating shingles
 
 # Initialize DataLoader and load documents as sets of shingles
 logger.info("Initializing DataLoader and loading documents...")
@@ -39,7 +39,7 @@ for label, group in cluster_groups:
     # Convert DataFrame to dictionary format: {DocID: shingles_set, ...}
     docs_as_sets = {row['DocID']: row['Shingles'] for index, row in cluster_docs_df.iterrows()}
     try:
-        minhash = LexicalProximityAlgorithm(docs_as_sets, num_hashes=100, similarity_threshold=0.5)
+        minhash = LexicalProximityAlgorithm(docs_as_sets, num_hashes=100)
         signatures = minhash.generate_minhash_signatures()
         similarities = minhash.calculate_similarities(signatures)
         similarity_calculator = JaccardSimilarityCalculator(docs_as_sets)
