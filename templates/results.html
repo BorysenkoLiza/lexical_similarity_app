@@ -13,7 +13,7 @@
         .content { margin-left: 220px; padding: 20px; width: calc(100% - 220px); }
         .cluster-section, .visualization-section { display: none; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f2f2f2; }
         .active { display: block; }
         .tab-menu { display: flex; margin-bottom: 20px; }
@@ -74,28 +74,34 @@
                         </tr>
                         <tr>
                             <td>
-                                <ul>
+                                <ul id="doc-list-{{ label }}">
                                 {% for doc in docs[:10] %}
-                                    <li>{{ doc['DocName'] }} (ID: {{ doc['DocID'] }})</li>
-                                {% endfor %}
-                                {% if docs|length > 10 %}
-                                    <li>... ({{ docs|length }} total)</li>
+                                        <li>{{ doc['DocName'] }}</li>
+                                    {% endfor %}
+                                    {% if docs|length > 10 %}
+                                        <li><span class="show-more" onclick="showAllDocuments({{ label }})">Show All</span></li>
                                 {% endif %}
                                 </ul>
                             </td>
                             <td rowspan="{{ cluster_similarities[label]|length }}">{{ docs[0]['DocName'] }} (ID: {{ docs[0]['DocID'] }})</td>
                             <td>
-                                <ul>
-                                    {% for doc1, doc2, similarity in cluster_similarities[label] %}
+                                <ul id="similar-docs-{{ label }}">
+                                    {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
                                         <li>{{ doc_names[doc1] }} & {{ doc_names[doc2] }}</li>
                                     {% endfor %}
+                                    {% if cluster_similarities[label]|length > 10 %}
+                                        <li><span class="show-more" onclick="showAllSimilar({{ label }})">Show All</span></li>
+                                    {% endif %}
                                 </ul>
                             </td>
                             <td>
-                                <ul>
-                                    {% for doc1, doc2, similarity in cluster_similarities[label] %}
+                                <ul id="similar-scores-{{ label }}">
+                                    {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
                                         <li>{{ similarity|round(4) }}</li>
                                     {% endfor %}
+                                    {% if cluster_similarities[label]|length > 10 %}
+                                        <li>...</li>
+                                    {% endif %}
                                 </ul>
                             </td>
                         </tr>
@@ -148,6 +154,45 @@
             if (selectedTab) {
                 selectedTab.classList.add('active');
             }
+        }
+
+        function showAllDocuments(clusterId) {
+            // Get the full list of documents for the cluster
+            var docList = document.getElementById('doc-list-' + clusterId);
+
+            // Replace the content with the full list
+            docList.innerHTML = '';
+            var docs = {{ clusters|tojson }};
+            docs[clusterId].forEach(function(doc) {
+                var li = document.createElement('li');
+                li.textContent = doc['DocName'] + ' (ID: ' + doc['DocID'] + ')';
+                docList.appendChild(li);
+            });
+        }
+
+        function showAllSimilar(clusterId) {
+            var similarDocsList = document.getElementById('similar-docs-' + clusterId);
+            var similarScoresList = document.getElementById('similar-scores-' + clusterId);
+
+            similarDocsList.innerHTML = '';
+            similarScoresList.innerHTML = '';
+
+            var allSimilarDocs = {{ cluster_similarities | tojson }};
+            var allDocNames = {{ doc_names | tojson }};
+
+            allSimilarDocs[clusterId].forEach(function(pair) {
+                var doc1 = pair[0];
+                var doc2 = pair[1];
+                var similarity = pair[2];
+
+                var docItem = document.createElement('li');
+                docItem.innerHTML = allDocNames[doc1] + ' & ' + allDocNames[doc2];
+                similarDocsList.appendChild(docItem);
+
+                var scoreItem = document.createElement('li');
+                scoreItem.innerHTML = similarity.toFixed(4);
+                similarScoresList.appendChild(scoreItem);
+            });
         }
 
         // Initialize the first tab as active

@@ -33,7 +33,7 @@ class DataLoader:
         """
         self.directory = directory
         self.doc_counter = 0  # Initialize a counter for docID assignment
-        self.documents_df = pd.DataFrame(columns=['DocID', 'DocName', 'DocText'])
+        self.documents_df = pd.DataFrame(columns=['DocID', 'DocName', 'DocText', 'WordCount'])
         self.shingle_size = shingle_size
 
     def load_documents(self):
@@ -43,7 +43,8 @@ class DataLoader:
                 filepath = os.path.join(self.directory, filename)
                 with open(filepath, 'r', encoding='utf-8') as file:
                     text = file.read()
-                    temp_data.append({'DocID': doc_id, 'DocName': filename, 'DocText': text})
+                    word_count = len(text.split())
+                    temp_data.append({'DocID': doc_id, 'DocName': filename, 'DocText': text, 'WordCount': word_count})
         # Append collected data in bulk using pd.concat
         self.documents_df = pd.concat([self.documents_df, pd.DataFrame(temp_data)], ignore_index=True)
 

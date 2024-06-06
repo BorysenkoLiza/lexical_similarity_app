@@ -89,29 +89,31 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
     # Similarity for docs in each cluster
     cluster_similarities = {}
     clusters = {}
+    word_counts = {}
     logger.info(f"Number of clusters: {len(cluster_groups)}")
 
     for label, group in cluster_groups:
         logger.info(f"Running MinHash for Cluster {label}")
-        cluster_docs_df = group[['DocID','DocName','Shingles']].copy() 
+        cluster_docs_df = group[['DocID', 'DocName', 'Shingles', 'WordCount']].copy()
         #Convert DataFrame to dictionary format: {DocID: shingles_set, ...}
         docs_as_sets = {row['DocID']: row['Shingles'] for index, row in cluster_docs_df.iterrows()}
-        clusters[label] = [{'DocID': row['DocID'], 'DocName': row['DocName']} for index, row in cluster_docs_df.iterrows()]  # Store both document IDs and names for the cluster
+        clusters[label] = [{'DocID': row['DocID'], 'DocName': row['DocName'], 'WordCount': row['WordCount']} for index, row in cluster_docs_df.iterrows()] 
+        for index, row in cluster_docs_df.iterrows():
+            word_counts[row['DocID']] = row['WordCount'] # Store both document IDs and names for the cluster
         try:
             minhash = LexicalProximityAlgorithm(docs_as_sets, num_hashes=num_hashes)
             signatures = minhash.generate_minhash_signatures()
             similarities = minhash.calculate_similarities(signatures)
-            similar_pairs = sorted(similarities, key=lambda x: x[2], reverse=True)[:5] #top five similar pairs for cluster
+            similar_pairs = sorted([pair for pair in similarities if pair[2] >= similarity_threshold], key=lambda x: x[2], reverse=True)
             cluster_similarities[label] = similar_pairs
-            #similarity_calculator = JaccardSimilarityCalculator(docs_as_sets)
-            #jaccard_similarities = similarity_calculator.calculate_jaccard()
-            for doc1, doc2, similarity in similarities:
-                if similarity > similarity_threshold:  # Adjust threshold as needed
-                    logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f}")
+            #for doc1, doc2, similarity in similarities:
+                #if similarity > similarity_threshold:  # Adjust threshold as needed
+                    #logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f}")
         except KeyError as e:
             logger.error(f"KeyError: {e} - Check if DocID is present in docs_as_sets")
 
     cluster_top_terms = clusterer.get_top_terms_per_cluster()
+    cluster_top_terms = None
     # Store DataFrame and results in the global store
     result_id = secrets.token_hex(8)
     logger.info(f"Storing results with result_id: {result_id}")
@@ -119,7 +121,8 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
         'clusters': clusters,
         'cluster_top_terms': cluster_top_terms,
         'cluster_similarities': cluster_similarities,
-        'documents_df': documents_df
+        'documents_df': documents_df,
+        'word_counts': word_counts 
     }
 
     return result_id
@@ -136,12 +139,14 @@ def results():
     similar_docs = session.get('similar_docs', None)
     file_name = session.get('file_name', None)
     doc_names = {row['DocID']: row['DocName'] for index, row in results['documents_df'].iterrows()}
+    word_counts = results['word_counts']
     return render_template('results.html', clusters=results['clusters'], 
                            cluster_top_terms=results['cluster_top_terms'], 
                            cluster_similarities=results['cluster_similarities'], 
                            similar_docs=similar_docs, 
                            file_name=file_name,
-                           doc_names=doc_names)
+                           doc_names=doc_names,
+                           word_counts=word_counts)
 
 @app.route('/find_similar', methods=['POST'])
 def find_similar():

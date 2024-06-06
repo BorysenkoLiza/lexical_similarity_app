@@ -1,7 +1,11 @@
+import random
 import re
 import string
 import logging
 
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 import nltk
 import numpy as np
@@ -14,6 +18,9 @@ from nltk.corpus import stopwords as nltk_stopwords
 
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score, silhouette_samples
+
+from nltk.cluster import KMeansClusterer
+from nltk.cluster.util import cosine_distance
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +52,7 @@ class SemanticClusterer:
         get_top_terms_per_cluster(): Return the top terms for each cluster based on the cluster centroids.
         process_documents(raw_documents): Process documents from text to clusters.
     """
-    def __init__(self, vector_size=300, min_cluster=10, batch_size=500, seed=42):
+    def __init__(self, vector_size=300, min_cluster=5, batch_size=500, seed=42):
         """
         Initialize the SemanticClusterer with the specified parameters and load the pretrained Word2Vec model.
         
@@ -174,7 +181,31 @@ class SemanticClusterer:
         # Print silhouette values for each cluster
         logger.info("Documents clusterized successfully.")
         self.print_silhouette_scores(labels, sample_silhouette_values)
+        self.visualize_clusters(vectors, labels, method='pca') 
         return labels, silhouette_avg
+    
+    '''def cluster_documents(self, vectors):
+
+        # NLTK KMeansClusterer expects numpy arrays as input
+        np_vectors = np.array(vectors)
+
+        kclusterer = KMeansClusterer(
+            self.min_cluster,
+            distance=cosine_distance,
+            repeats=25,
+        )
+        labels = kclusterer.cluster(np_vectors, assign_clusters=True)
+
+        # Calculating silhouette scores
+        silhouette_avg = silhouette_score(np_vectors, labels)
+        sample_silhouette_values = silhouette_samples(np_vectors, labels)
+
+        # Logging and printing silhouette values for each cluster
+        logger.info("Documents clustered successfully.")
+        #self.print_silhouette_scores(labels, sample_silhouette_values)
+        self.visualize_clusters(vectors, labels, method='pca') 
+        return labels, silhouette_avg'''
+    
     
     def print_silhouette_scores(self, labels, sample_silhouette_values):
         """
@@ -206,6 +237,7 @@ class SemanticClusterer:
             top_terms[i] = tokens_per_cluster
             logger.info(f"Cluster {i} top terms: {tokens_per_cluster}")  # Log top terms for each cluster
         return top_terms
+    
 
     def process_documents(self, documents_df, train_new_model=False):
         """
@@ -225,3 +257,39 @@ class SemanticClusterer:
         labels, silhouette = self.cluster_documents(document_vectors)
         documents_df['Cluster'] = labels
         return documents_df, silhouette
+    
+    def visualize_clusters(self, vectors, labels, method='pca'):
+        """
+        Visualize the clustered document vectors using PCA or t-SNE.
+        
+        Parameters:
+            vectors (np.array): Document vectors.
+            labels (np.array): Cluster labels for each document.
+            method (str): Method for dimensionality reduction ('pca' or 'tsne').
+        """
+        if method == 'pca':
+            reducer = PCA(n_components=2)
+            logger.info("Using PCA for dimensionality reduction.")
+        elif method == 'tsne':
+            reducer = TSNE(n_components=2, random_state=self.seed)
+            logger.info("Using t-SNE for dimensionality reduction.")
+        else:
+            raise ValueError("Method must be 'pca' or 'tsne'")
+
+        reduced_vectors = reducer.fit_transform(vectors)
+        plt.figure(figsize=(10, 7))
+
+        unique_labels = np.unique(labels)
+        colors = plt.cm.rainbow(np.linspace(0, 1, len(unique_labels)))
+
+        for label, color in zip(unique_labels, colors):
+            plt.scatter(reduced_vectors[labels == label, 0], 
+                        reduced_vectors[labels == label, 1], 
+                        color=color, 
+                        label=f'Cluster {label}', 
+                        alpha=0.6, edgecolors='w', s=100)
+
+        plt.title('Cluster Visualization')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
