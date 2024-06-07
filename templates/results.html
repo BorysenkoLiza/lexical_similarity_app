@@ -83,7 +83,7 @@
                                 {% endif %}
                                 </ul>
                             </td>
-                            <td rowspan="{{ cluster_similarities[label]|length }}">{{ docs[0]['DocName'] }} (ID: {{ docs[0]['DocID'] }})</td>
+                            <td rowspan="{{ cluster_similarities[label]|length }}">{{ docs[0]['DocName'] }}</td>
                             <td>
                                 <ul id="similar-docs-{{ label }}">
                                     {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
