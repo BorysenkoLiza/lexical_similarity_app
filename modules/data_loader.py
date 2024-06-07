@@ -2,7 +2,13 @@ import os
 import re
 import string
 import binascii
+import time
+import logging
 import pandas as pd
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DataLoader:
     """
@@ -93,6 +99,9 @@ class DataLoader:
 
         self.load_documents()
         self.documents_df['ProcessedText'] = self.documents_df['DocText'].apply(self.basic_preprocess)
+        start_time = time.time()
         self.documents_df['Shingles'] = self.documents_df['ProcessedText'].apply(self.generate_shingles)
+        elapsed_time = time.time() - start_time
+        logger.info("Shingling done in %.2f seconds", elapsed_time)
         self.documents_df.drop(columns=['ProcessedText'], inplace=True)
         return self.documents_df

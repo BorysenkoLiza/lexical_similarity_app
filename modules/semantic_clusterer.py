@@ -2,6 +2,8 @@ import random
 import re
 import string
 import logging
+import time
+from typing import Counter
 
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
@@ -69,12 +71,13 @@ class SemanticClusterer:
         self.stopwords = set(nltk_stopwords.words('english'))
         np.random.seed(seed)
         self.km = None
+        start_time = time.time()
         self.model = KeyedVectors.load_word2vec_format(
             'D:/uni/4 курс/2 семестр/Диплом/git_thesis/Lexical_proximity/modules/GoogleNews-vectors-negative300.bin',
-            binary=True,
-            limit=80000
+            binary=True
         )
-        logger.info("Word2Vec model loaded successfully.")
+        elapsed_time = time.time() - start_time
+        logger.info("Word2Vec model loaded in %.2f seconds", elapsed_time)
 
 
     def clean_text(self, text):
@@ -94,9 +97,7 @@ class SemanticClusterer:
         text = re.sub(r"(?<=\w)-(?=\w)", " ", text)  # Replace dash between words   
         text = re.sub(f"[{re.escape(string.punctuation)}]", "", text)  # Remove punctuation
         tokens = word_tokenize(text)  # Get tokens from text
-        tokens = [t for t in tokens if t not in self.stopwords]  # Remove stopwords
-        tokens = ["" if t.isdigit() else t for t in tokens]  # Remove digits
-        tokens = [t for t in tokens if len(t) > 1]  # Remove short tokens
+        tokens = [t for t in tokens if not t.isdigit() and t.isalnum() and t not in self.stopwords and len(t) > 1]
         return tokens
     
     def tokenize_documents(self, documents):
@@ -117,12 +118,6 @@ class SemanticClusterer:
         features = []
         size_output = self.model.vector_size
         embedding_dict = self.model
-
-        if strategy == "min-max":
-            size_output *= 2
-
-        if hasattr(self.model, "wv"):
-            embedding_dict = self.model.wv
 
         for tokens in tokenized_documents:
             zero_vector = np.zeros(size_output)
@@ -148,7 +143,7 @@ class SemanticClusterer:
                 features.append(zero_vector)
         return features
     
-    def train_word2vec_model(self, tokenized_documents):
+    #def train_word2vec_model(self, tokenized_documents):
         """
         Train a Word2Vec model on the provided tokenized documents.
         
@@ -173,38 +168,19 @@ class SemanticClusterer:
         Returns:
             tuple: Cluster labels and silhouette score.
         """
+        start_time = time.time()
         self.km = MiniBatchKMeans(n_clusters=self.min_cluster, batch_size=self.batch_size, random_state=self.seed)
         labels = self.km.fit_predict(vectors)
+        elapsed_time = time.time() - start_time
+        logger.info("Documents clusterized successfully in %.2f seconds", elapsed_time)
+
         silhouette_avg = silhouette_score(vectors, labels)
         sample_silhouette_values = silhouette_samples(vectors, labels)
-        
+
         # Print silhouette values for each cluster
-        logger.info("Documents clusterized successfully.")
         self.print_silhouette_scores(labels, sample_silhouette_values)
         self.visualize_clusters(vectors, labels, method='pca') 
         return labels, silhouette_avg
-    
-    '''def cluster_documents(self, vectors):
-
-        # NLTK KMeansClusterer expects numpy arrays as input
-        np_vectors = np.array(vectors)
-
-        kclusterer = KMeansClusterer(
-            self.min_cluster,
-            distance=cosine_distance,
-            repeats=25,
-        )
-        labels = kclusterer.cluster(np_vectors, assign_clusters=True)
-
-        # Calculating silhouette scores
-        silhouette_avg = silhouette_score(np_vectors, labels)
-        sample_silhouette_values = silhouette_samples(np_vectors, labels)
-
-        # Logging and printing silhouette values for each cluster
-        logger.info("Documents clustered successfully.")
-        #self.print_silhouette_scores(labels, sample_silhouette_values)
-        self.visualize_clusters(vectors, labels, method='pca') 
-        return labels, silhouette_avg'''
     
     
     def print_silhouette_scores(self, labels, sample_silhouette_values):
@@ -222,22 +198,32 @@ class SemanticClusterer:
             logger.info(f"    Mean Silhouette Value: {cluster_silhouette_values.mean():.4f}")
             logger.info(f"    Min Silhouette Value: {cluster_silhouette_values.min():.4f}")
             logger.info(f"    Max Silhouette Value: {cluster_silhouette_values.max():.4f}")
+
     
-    def get_top_terms_per_cluster(self):
+    def get_top_terms_per_cluster(self, documents_df):
         """
-        Get the top terms for each cluster based on the cluster centroids.
+        Get the top terms for each cluster based on frequency.
+        
+        Parameters:
+            documents_df (pandas.DataFrame): DataFrame with 'Cluster' and 'Tokens' columns.
+        
+        Returns:
+            dict: A dictionary with cluster numbers as keys and strings of top terms and their frequencies as values.
         """
-        logger.info("Top terms per cluster (based on centroids):")
+        logger.info("Top terms per cluster (based on frequency):")
         top_terms = {}
         for i in range(self.min_cluster):
-            tokens_per_cluster = []
-            most_representative = self.model.similar_by_vector(self.km.cluster_centers_[i], topn=10)
-            for t in most_representative:
-                tokens_per_cluster.append(t[0])
+            cluster_docs = documents_df[documents_df['Cluster'] == i]['Tokens']
+            # Flatten list of lists of tokens and count occurrences
+            all_tokens = [token for sublist in cluster_docs for token in sublist]
+            most_frequent = Counter(all_tokens).most_common(10)
+            
+            # Construct a string that lists the top tokens and their counts
+            tokens_per_cluster = " ".join([f"{word}({count})" for word, count in most_frequent])
             top_terms[i] = tokens_per_cluster
-            logger.info(f"Cluster {i} top terms: {tokens_per_cluster}")  # Log top terms for each cluster
+            logger.info(f"Cluster {i}: {tokens_per_cluster}")
+
         return top_terms
-    
 
     def process_documents(self, documents_df, train_new_model=False):
         """
@@ -249,14 +235,25 @@ class SemanticClusterer:
         Returns:
             pandas.DataFrame: DataFrame with additional columns for tokenized texts, vectors, and cluster labels.
         """
+        start_time1 = time.time()
         documents_df['Tokens'] = documents_df['DocText'].apply(self.clean_text)
-        if train_new_model:
-            self.train_word2vec_model(documents_df['Tokens'].tolist())
+        elapsed_time1 = time.time() - start_time1
+        logger.info("Documents preproccessed and tokenized in %.2f seconds", elapsed_time1)
+
+        #if train_new_model:
+            #self.train_word2vec_model(documents_df['Tokens'].tolist())
+
         # Get document vectors
+        start_time2 = time.time()
         document_vectors = self.vectorize_docs(documents_df['Tokens'].tolist())
+        elapsed_time2 = time.time() - start_time2
+        logger.info("Document vectors created in %.2f seconds", elapsed_time2)
+
         labels, silhouette = self.cluster_documents(document_vectors)
         documents_df['Cluster'] = labels
-        return documents_df, silhouette
+        top_terms = self.get_top_terms_per_cluster(documents_df)
+        logger.info("Finished processing documents.")
+        return documents_df, silhouette, top_terms
     
     def visualize_clusters(self, vectors, labels, method='pca'):
         """

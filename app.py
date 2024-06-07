@@ -80,7 +80,7 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
     # Initialize the SemanticClusterer
     logger.info("Initializing SemanticClusterer and processing documents...")
     clusterer = SemanticClusterer(vector_size=vector_size, min_cluster=num_clusters)
-    documents_df, silhouette = clusterer.process_documents(documents_df, train_new_model=False)
+    documents_df, silhouette,cluster_top_terms = clusterer.process_documents(documents_df, train_new_model=False)
     logger.info("Silhouette Score: %f", silhouette)
 
     # Grouping documents by clusters
@@ -95,6 +95,7 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
     for label, group in cluster_groups:
         logger.info(f"Running MinHash for Cluster {label}")
         cluster_docs_df = group[['DocID', 'DocName', 'Shingles', 'WordCount']].copy()
+
         #Convert DataFrame to dictionary format: {DocID: shingles_set, ...}
         docs_as_sets = {row['DocID']: row['Shingles'] for index, row in cluster_docs_df.iterrows()}
         clusters[label] = [{'DocID': row['DocID'], 'DocName': row['DocName'], 'WordCount': row['WordCount']} for index, row in cluster_docs_df.iterrows()] 
@@ -106,14 +107,9 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
             similarities = minhash.calculate_similarities(signatures)
             similar_pairs = sorted([pair for pair in similarities if pair[2] >= similarity_threshold], key=lambda x: x[2], reverse=True)
             cluster_similarities[label] = similar_pairs
-            #for doc1, doc2, similarity in similarities:
-                #if similarity > similarity_threshold:  # Adjust threshold as needed
-                    #logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f}")
         except KeyError as e:
             logger.error(f"KeyError: {e} - Check if DocID is present in docs_as_sets")
 
-    cluster_top_terms = clusterer.get_top_terms_per_cluster()
-    cluster_top_terms = None
     # Store DataFrame and results in the global store
     result_id = secrets.token_hex(8)
     logger.info(f"Storing results with result_id: {result_id}")

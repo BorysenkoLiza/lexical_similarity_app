@@ -1,4 +1,5 @@
 import random
+import time
 import sympy
 import logging
 
@@ -80,6 +81,7 @@ class LexicalProximityAlgorithm:
         Returns:
             dict: A dictionary with document IDs as keys and their MinHash signatures as values.
         """
+        start_time = time.time()
         signatures = {}
         for doc_id in self.docs_as_sets:
             shingleIDSet = self.docs_as_sets[doc_id]
@@ -92,7 +94,8 @@ class LexicalProximityAlgorithm:
                         min_hash = hash_code
                 signature.append(min_hash)
             signatures[doc_id] = signature
-        logger.info("MinHash signatures generated for all documents")
+        elapsed_time = time.time() - start_time
+        logger.info("MinHash signatures generated in %.2f seconds", elapsed_time)
         return signatures
 
     def calculate_similarities(self, signatures):
@@ -102,6 +105,7 @@ class LexicalProximityAlgorithm:
         Returns:
             list: A list of tuples (doc_id1, doc_id2, similarity) for document pairs with similarities.
         """
+        start_time = time.time()
         doc_ids = list(signatures.keys())
         similarities = []
         for i in range(self.num_docs):
@@ -115,5 +119,6 @@ class LexicalProximityAlgorithm:
                     count += (sig1[k] == sig2[k])
                 sim = count / self.num_hashes
                 similarities.append((doc_id1, doc_id2, sim))
-        logger.info("Similarities calculated for all document pairs")
+        elapsed_time = time.time() - start_time
+        logger.info("Similarities calculated in %.2f seconds", elapsed_time)
         return similarities
