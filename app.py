@@ -153,7 +153,6 @@ def find_similar():
         return "Results not found", 404
 
     file_name = request.form.get('fileName')
-    similarity_threshold = float(request.form.get('similarityThreshold'))
     results = data_store[result_id]
     documents_df = results['documents_df']
 
@@ -171,9 +170,9 @@ def find_similar():
     # Find similar documents within the cluster
     similar_docs = []
     for doc1, doc2, similarity in results['cluster_similarities'][cluster_id]:
-        if doc1 == doc_id or doc2 == doc_id:
-            if similarity >= similarity_threshold:
-                similar_docs.append((doc1, doc2, similarity))
+        if (doc1 == doc_id or doc2 == doc_id) and (doc1 != doc2):
+            other_doc_id = doc1 if doc1 != doc_id else doc2
+            similar_docs.append((other_doc_id, similarity))
 
     session['similar_docs'] = similar_docs
     session['file_name'] = file_name

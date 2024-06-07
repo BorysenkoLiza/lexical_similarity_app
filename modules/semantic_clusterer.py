@@ -1,4 +1,3 @@
-import random
 import re
 import string
 import logging
@@ -11,7 +10,6 @@ from sklearn.manifold import TSNE
 
 import nltk
 import numpy as np
-import pandas as pd
 
 from gensim.models import Word2Vec, KeyedVectors
 
@@ -21,16 +19,11 @@ from nltk.corpus import stopwords as nltk_stopwords
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import silhouette_score, silhouette_samples
 
-from nltk.cluster import KMeansClusterer
-from nltk.cluster.util import cosine_distance
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 nltk.download("stopwords")
 nltk.download("punkt")
-
 class SemanticClusterer:
     """
     A class to perform document clustering using Word2Vec vectors and MiniBatchKMeans.
@@ -78,7 +71,6 @@ class SemanticClusterer:
         )
         elapsed_time = time.time() - start_time
         logger.info("Word2Vec model loaded in %.2f seconds", elapsed_time)
-
 
     def clean_text(self, text):
         """
@@ -182,7 +174,6 @@ class SemanticClusterer:
         self.visualize_clusters(vectors, labels, method='pca') 
         return labels, silhouette_avg
     
-    
     def print_silhouette_scores(self, labels, sample_silhouette_values):
         """
         Print the silhouette scores for each cluster.
@@ -198,7 +189,6 @@ class SemanticClusterer:
             logger.info(f"    Mean Silhouette Value: {cluster_silhouette_values.mean():.4f}")
             logger.info(f"    Min Silhouette Value: {cluster_silhouette_values.min():.4f}")
             logger.info(f"    Max Silhouette Value: {cluster_silhouette_values.max():.4f}")
-
     
     def get_top_terms_per_cluster(self, documents_df):
         """
@@ -214,15 +204,9 @@ class SemanticClusterer:
         top_terms = {}
         for i in range(self.min_cluster):
             cluster_docs = documents_df[documents_df['Cluster'] == i]['Tokens']
-            # Flatten list of lists of tokens and count occurrences
             all_tokens = [token for sublist in cluster_docs for token in sublist]
             most_frequent = Counter(all_tokens).most_common(10)
-            
-            # Construct a string that lists the top tokens and their counts
-            tokens_per_cluster = " ".join([f"{word}({count})" for word, count in most_frequent])
-            top_terms[i] = tokens_per_cluster
-            logger.info(f"Cluster {i}: {tokens_per_cluster}")
-
+            top_terms[i] = most_frequent
         return top_terms
 
     def process_documents(self, documents_df, train_new_model=False):

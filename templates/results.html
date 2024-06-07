@@ -25,7 +25,7 @@
     <div class="sidebar">
         <h2>Menu</h2>
         <ul>
-            <li><a href="#" onclick="showVisualization()">Show All</a></li>
+            <li><a href="#" onclick="showVisualization()">Search</a></li>
             {% for label in clusters.keys() %}
                 <li><a href="#" onclick="showCluster({{ label }})">Cluster {{ label }}</a></li>
             {% endfor %}
@@ -37,8 +37,6 @@
             <form action="{{ url_for('find_similar') }}" method="POST">
                 <label for="fileName">Document Name:</label>
                 <input type="text" id="fileName" name="fileName" required>
-                <label for="similarityThreshold">Similarity Threshold:</label>
-                <input type="number" step="0.01" id="similarityThreshold" name="similarityThreshold" required>
                 <button type="submit">Find Similar Documents</button>
             </form>
             <!-- Placeholder for displaying similar documents -->
@@ -48,11 +46,13 @@
                     <table>
                         <tr>
                             <th>Similar Document</th>
+                            <th>Word count</th>
                             <th>Similarity Score</th>
                         </tr>
-                        {% for doc1, doc2, similarity in similar_docs %}
+                        {% for other_doc_id, similarity in similar_docs %}
                             <tr>
-                                <td>{{ doc_names[doc1] if doc1 == file_name else doc_names[doc2] }}</td>
+                                <td>{{ doc_names[other_doc_id] }}</td>
+                                <td>{{ word_counts[other_doc_id] }}</td>
                                 <td>{{ similarity|round(4) }}</td>
                             </tr>
                         {% endfor %}
@@ -64,12 +64,11 @@
             {% for label, docs in clusters.items() %}
                 <div id="cluster-{{ label }}" class="cluster-section">
                     <h3>Cluster {{ label }} ({{ docs|length }} documents)</h3>
-                    <p><strong>Top Terms:</strong> {{ cluster_top_terms[label] }}</p>
                     <table>
                         <tr>
                             <th>Documents in cluster</th>
-                            <th>Representative Document</th>
-                            <th>Most Similar Documents</th>
+                            <th>Most common terms</th>
+                            <th>Pairs of similar documents</th>
                             <th>Similarity Score</th>
                         </tr>
                         <tr>
@@ -83,7 +82,13 @@
                                 {% endif %}
                                 </ul>
                             </td>
-                            <td rowspan="{{ cluster_similarities[label]|length }}">{{ docs[0]['DocName'] }}</td>
+                            <td>
+                                <ul>
+                                    {% for term, count in cluster_top_terms[label] %}
+                                        <li>{{ term }} ({{ count }})</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
                             <td>
                                 <ul id="similar-docs-{{ label }}">
                                     {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
