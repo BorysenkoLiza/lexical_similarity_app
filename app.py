@@ -75,7 +75,7 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
     # Initialize DataLoader and load documents as sets of shingles
     logger.info("Initializing DataLoader and loading documents...")
     loader = DataLoader(extract_folder, shingle_size)
-    documents_df = loader.get_docs_as_sets_and_texts()
+    documents_df = loader.get_proccessed_documents()
 
     # Initialize the SemanticClusterer
     logger.info("Initializing SemanticClusterer and processing documents...")

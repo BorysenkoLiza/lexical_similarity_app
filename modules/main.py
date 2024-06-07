@@ -15,7 +15,7 @@ shingle_size = 5  # Shingle size for generating shingles
 # Initialize DataLoader and load documents as sets of shingles
 logger.info("Initializing DataLoader and loading documents...")
 loader = DataLoader(directory_path, shingle_size)
-documents_df = loader.get_docs_as_sets_and_texts()
+documents_df = loader.get_proccessed_documents()
 
 # Initialize the SemanticClusterer
 logger.info("Initializing SemanticClusterer and processing documents...")

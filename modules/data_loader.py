@@ -14,22 +14,24 @@ class DataLoader:
     """
     A class to load, preprocess, and generate shingles from text files within a specified directory.
     
-    This class handles the loading of text documents from individual files, performs basic text preprocessing,
-    and generates shingles which are used in MinHash algorithms for estimating document similarity.
+    This class handles the following tasks:
+    - Loading text documents from individual files in a directory.
+    - Performing basic text preprocessing, including normalization and punctuation removal.
+    - Generating shingles from the preprocessed text for use in MinHash algorithms to estimate document similarity.
     
     Attributes:
-        directory (str): Directory path where the text files are stored.
-        doc_counter (int): Counter to assign a unique document ID to each document.
-        docs_as_sets (dict): Dictionary to store document ID and corresponding shingles.
+        directory (str): The path to the directory containing text files.
         shingle_size (int): The number of words in each shingle.
+        documents_df (pd.DataFrame): DataFrame to store document information and shingles.
     
     Methods:
-        load_documents(): Iterator that loads text from files and assigns unique document IDs.
-        basic_preprocess(text): Normalizes whitespace, removes punctuation, and lowercases the text.
+        load_documents(): Loads text from files and stores them in a DataFrame.
+        preprocess_text(text): Normalizes whitespace, removes punctuation, and lowercases the text.
         generate_shingles(text): Generates shingles from preprocessed text.
-        get_docs_as_sets_and_texts(): Processes documents to generate and retrieve shingles for each.
+        process_documents(): Processes documents to generate shingles and stores them in the DataFrame.
+        get_processed_documents(): Returns the DataFrame with processed document information and shingles.
     """
-    def __init__(self, directory, shingle_size=3):
+    def __init__(self, directory, shingle_size=5):
         """
         Initializes the DataLoader with the path to a directory containing text files.
         
@@ -38,23 +40,25 @@ class DataLoader:
             shingle_size (int): The number of words in each shingle.
         """
         self.directory = directory
-        self.doc_counter = 0  # Initialize a counter for docID assignment
-        self.documents_df = pd.DataFrame(columns=['DocID', 'DocName', 'DocText', 'WordCount'])
         self.shingle_size = shingle_size
+        self.documents_df = pd.DataFrame(columns=['DocID', 'DocName', 'DocText', 'WordCount'])
 
     def load_documents(self):
-        temp_data = []  # List to collect data and append in bulk to the DataFrame
+        """
+        Loads text documents from the specified directory and stores them in a DataFrame.
+
+        """
+        temp_data = [] 
         for doc_id, filename in enumerate(os.listdir(self.directory), start=1):
-            if filename.endswith(".txt"):  # Ensures only text files are processed
+            if filename.endswith(".txt"):
                 filepath = os.path.join(self.directory, filename)
                 with open(filepath, 'r', encoding='utf-8') as file:
                     text = file.read()
                     word_count = len(text.split())
                     temp_data.append({'DocID': doc_id, 'DocName': filename, 'DocText': text, 'WordCount': word_count})
-        # Append collected data in bulk using pd.concat
         self.documents_df = pd.concat([self.documents_df, pd.DataFrame(temp_data)], ignore_index=True)
 
-    def basic_preprocess(self, text):
+    def preprocess_text(self, text):
         """
         Processes text by normalizing whitespace, removing punctuation, and converting to lowercase.
         
@@ -70,13 +74,13 @@ class DataLoader:
 
     def generate_shingles(self, text):
         """
-        Generates shingles from the text of a document using the configured shingle size.
+        Generates shingles from the text of a document
         
         Parameters:
             text (str): The text content of a document preprocessed for shingling.
         
         Returns:
-            set: A set of unique shingles represented as CRC32 hashed values.
+            set: A set of shingles represented as CRC32 hashed values.
         """
         words = text.split()
         shingles = set()
@@ -86,22 +90,32 @@ class DataLoader:
             shingles.add(crc)
         return shingles
     
-    
-    def get_docs_as_sets_and_texts(self):
+    def proccess_documents(self):
         """
         Preprocesses text for shingling and generates shingles for each document, 
-        storing them in docs_as_sets and also returns the preprocessed texts for clustering.
-        
-        Returns:
-            tuple: A tuple containing a dictionary with document IDs as keys and sets of shingles,
-                   and a list of tuples with document IDs and preprocessed texts for clustering.
-        """
+        storing them in a DataFrame
 
+        Returns:
+            DataFrame: DataFrame containing DocID, DocName, DocText, WordCount, and Shingles.
+        """
         self.load_documents()
-        self.documents_df['ProcessedText'] = self.documents_df['DocText'].apply(self.basic_preprocess)
+        self.documents_df['ProcessedText'] = self.documents_df['DocText'].apply(self.preprocess_text)
+        
         start_time = time.time()
         self.documents_df['Shingles'] = self.documents_df['ProcessedText'].apply(self.generate_shingles)
         elapsed_time = time.time() - start_time
+       
         logger.info("Shingling done in %.2f seconds", elapsed_time)
         self.documents_df.drop(columns=['ProcessedText'], inplace=True)
+        return self.documents_df
+    
+    def get_proccessed_documents(self):
+        """
+        Returns the DataFrame containing document information and sets of shingles, 
+        that represent documents
+        
+        Returns:
+            DataFrame: DataFrame containing DocID, DocName, DocText, WordCount, and Shingles.
+        """
+        self.proccess_documents()
         return self.documents_df
