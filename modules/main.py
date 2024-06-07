@@ -1,4 +1,4 @@
-from data_loader import DataLoader
+'''from data_loader import DataLoader
 from semantic_clusterer import SemanticClusterer
 from lexical_proximity_algorithm import LexicalProximityAlgorithm
 from jaccard import JaccardSimilarityCalculator
@@ -51,5 +51,4 @@ for label, group in cluster_groups:
                 logger.info(f"Cluster {label}: Document {doc1} is similar to Document {doc2} with similarity {similarity:.8f} and Jaccard similarity {jaccard_similarity:.8f}")
     except KeyError as e:
         logger.error(f"KeyError: {e} - Check if DocID is present in docs_as_sets")
-
-cluster_top_terms = clusterer.get_top_terms_per_cluster()
+cluster_top_terms = clusterer.get_top_terms_per_cluster()'''
