@@ -8,11 +8,8 @@ from werkzeug.utils import secure_filename
 from modules.data_loader import DataLoader
 from modules.semantic_clusterer import SemanticClusterer
 from modules.lexical_proximity_algorithm import LexicalProximityAlgorithm
-from modules.jaccard import JaccardSimilarityCalculator
-import secrets  # To generate a secret key
-import matplotlib.pyplot as plt
+import secrets
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,15 +22,36 @@ app.secret_key = secrets.token_hex(16)  # Generate a unique secret key
 data_store = {}
 
 def allowed_file(filename):
+    """
+    Check if the uploaded file is allowed (i.e., is a zip file).
+    
+    Parameters:
+        filename (str): Name of the file to check.
+    
+    Returns:
+        bool: True if the file is allowed, False otherwise.
+    """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 @app.route('/', methods=['GET'])
 def index():
+    """
+    Render the index page.
+    
+    Returns:
+        Response: Rendered HTML of the index page.
+    """
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    """
+    Handle the file upload, process the uploaded zip file, and redirect to results.
+    
+    Returns:
+        Response: Redirect to results page or render index page with an error.
+    """
     if 'zipFile' not in request.files:
         return redirect(request.url)
     file = request.files['zipFile']
@@ -45,6 +63,7 @@ def upload():
 
     if file.filename == '':
         return redirect(request.url)
+    
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         zip_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -57,6 +76,15 @@ def upload():
     return render_template('index.html')
 
 def process_zip(zip_path):
+    """
+    Extract the uploaded zip file to a temporary directory and move text files to the final extraction directory.
+    
+    Parameters:
+        zip_path (str): Path to the uploaded zip file.
+    
+    Returns:
+        str: Path to the final extraction directory.
+    """
     # Create a temporary directory for extraction
     temp_extract_dir = tempfile.mkdtemp()
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -72,6 +100,20 @@ def process_zip(zip_path):
     return extract_folder
 
 def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, vector_size, similarity_threshold):
+    """
+    Process the documents in the extracted folder, perform clustering, and calculate similarities.
+    
+    Parameters:
+        extract_folder (str): Path to the folder containing extracted text files.
+        num_clusters (int): Number of clusters for document clustering.
+        shingle_size (int): Shingle size for document shingling.
+        num_hashes (int): Number of hash functions for MinHash.
+        vector_size (int): Vector size for Word2Vec model.
+        similarity_threshold (float): Similarity threshold for considering documents as similar.
+    
+    Returns:
+        str: Unique result ID for the processed documents.
+    """
     # Initialize DataLoader and load documents as sets of shingles
     logger.info("Initializing DataLoader and loading documents...")
     loader = DataLoader(extract_folder, shingle_size)
@@ -79,8 +121,8 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
 
     # Initialize the SemanticClusterer
     logger.info("Initializing SemanticClusterer and processing documents...")
-    clusterer = SemanticClusterer(vector_size=vector_size, min_cluster=num_clusters)
-    documents_df, silhouette,cluster_top_terms = clusterer.process_documents(documents_df, train_new_model=False)
+    clusterer = SemanticClusterer(vector_size=vector_size, num_cluster=num_clusters)
+    documents_df, silhouette,cluster_top_terms = clusterer.process_documents(documents_df)
     logger.info("Silhouette Score: %f", silhouette)
 
     # Grouping documents by clusters
@@ -120,11 +162,34 @@ def process_documents(extract_folder, num_clusters, shingle_size, num_hashes, ve
         'documents_df': documents_df,
         'word_counts': word_counts 
     }
+    # Clean up the uploads folder
+    clean_uploads_folder()
 
     return result_id
 
+def clean_uploads_folder():
+    """
+    Remove all files from the uploads folder.
+    """
+    folder = app.config['UPLOAD_FOLDER']
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            logger.error(f'Failed to delete {file_path}. Reason: {e}')
+
 @app.route('/results')
 def results():
+    """
+    Display the results page with the processed documents and their clusters.
+    
+    Returns:
+        Response: Rendered HTML of the results page.
+    """
     result_id = session.get('result_id')
     logger.info(f"Fetching results for result_id: {result_id}")
     if result_id not in data_store:
@@ -148,6 +213,12 @@ def results():
 
 @app.route('/find_similar', methods=['POST'])
 def find_similar():
+    """
+    Find similar documents for a given document name within its cluster and redirect to the results page.
+    
+    Returns:
+        Response: Redirect to the results page or error message if document not found.
+    """
     result_id = session.get('result_id')
     logger.info(f"Finding similar documents for result_id: {result_id}")
     if result_id not in data_store:
