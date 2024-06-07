@@ -10,37 +10,30 @@ logger = logging.getLogger(__name__)
 class LexicalProximityAlgorithm:
     """
     This class implements the MinHash algorithm to estimate the similarity between documents based on sets of shingles.
-    It is designed to compute MinHash signatures for each document and to evaluate pairwise similarities between
-    documents using these signatures. A similarity threshold is used to identify and report pairs of documents that
-    are considered similar based on their Jaccard similarity estimate.
-
-    The algorithm is particularly useful for large datasets where direct computation of Jaccard similarities would be
-    computationally expensive. It provides an efficient probabilistic approach to detect similar documents in a large corpus.
 
     Attributes:
-        docs_as_sets (dict): A dictionary mapping each document ID to its corresponding set of shingles.
-        num_hashes (int): The number of hash functions used to compute MinHash signatures, impacting the accuracy of similarity estimates.
-        similarity_threshold (float): The minimum similarity score required to consider two documents as similar.
-        num_docs (int): The total number of documents being analyzed.
-        max_shingle (int): The maximum value for shingle encoding, used in hash function calculations.
-        next_prime (int): A prime number larger than max_shingle, used to ensure a good distribution for hash functions.
-        coeff_a (list): Random coefficients 'a' used in the hash functions.
-        coeff_b (list): Random coefficients 'b' used in the hash functions.
+        docs_as_sets (dict): Dictionary mapping document IDs to sets of shingles.
+        num_hashes (int): Number of hash functions used in MinHash.
+        num_docs (int): Number of documents.
+        max_shingle (int): Maximum value for shingle encoding.
+        next_prime (int): Prime number larger than max_shingle for hash functions.
+        coeff_a (list): List of random coefficients 'a' for hash functions.
+        coeff_b (list): List of random coefficients 'b' for hash functions.
     
     Methods:
-        _pick_random_coeffs(): Generates a list of unique random coefficients for the hash functions.
-        generate_minhash_signatures(): Computes MinHash signatures for each document using the random hash functions.
-        calculate_similarities(signatures): Calculates and returns the pairwise similarities between documents based on their MinHash signatures.
+        find_next_prime(n): Finds the next prime number greater than n.
+        pick_random_coeffs(max_shingle): Generates unique random coefficients for hash functions.
+        generate_minhash_signatures(): Computes MinHash signatures for each document.
+        calculate_similarities(signatures): Calculates pairwise similarities between documents.
     """
 
     def __init__(self, docs_as_sets, num_hashes=100):
             """
-            Initializes the LexicalProximityAlgorithm with a dictionary of documents and their shingle sets.
+            Initializes the LexicalProximityAlgorithm
             
             Parameters:
                 docs_as_sets (dict): Dictionary with document IDs as keys and sets of shingles as values.
                 num_hashes (int): Number of hash functions to use in the MinHash algorithm.
-                similarity_threshold (float): The threshold for considering documents as similar.
             """
             self.docs_as_sets = docs_as_sets
             self.num_hashes = num_hashes
@@ -54,16 +47,18 @@ class LexicalProximityAlgorithm:
     def find_next_prime(self, n):
         """
         Finds the next prime number greater than a given number n.
+        Parameters:
+            n (int): The number to find the next prime for.
+
+        Returns:
+            int: The next prime number greater than n.
         """
         return sympy.nextprime(n)
     
     def pick_random_coeffs(self, max_shingle):
         """
-        Helper method to generate a list of unique random coefficients for the hash functions used in MinHash.
-        Our random hash function will take the form of: 
-        h(x) = (a*x + b) % c
-        Where 'x' is the input value, 'a' and 'b' are random coefficients, 
-        and 'c' is a prime number just greater than maxShingleID.
+        Generates a list of unique random coefficients for the hash functions h(x) = (a*x + b) % c
+
         Returns:
             list: A list of unique random integers.
         """
@@ -102,6 +97,9 @@ class LexicalProximityAlgorithm:
         """
         Calculates similarities between all pairs of documents based on their MinHash signatures.
         
+        Parameters:
+            signatures (dict): Dictionary with document IDs as keys and MinHash signatures as values.
+
         Returns:
             list: A list of tuples (doc_id1, doc_id2, similarity) for document pairs with similarities.
         """
