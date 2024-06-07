@@ -25,7 +25,8 @@
     <div class="sidebar">
         <h2>Menu</h2>
         <ul>
-            <li><a href="#" onclick="showVisualization()">Search</a></li>
+            <li><a href="#" onclick="showTab('search')">Search</a></li>
+            <li><a href="#" onclick="showTab('all_pairs')">All Pairs</a></li>
             {% for label in clusters.keys() %}
                 <li><a href="#" onclick="showCluster({{ label }})">Cluster {{ label }}</a></li>
             {% endfor %}
@@ -33,7 +34,7 @@
     </div>
     <div class="content">
         <h1>Lexical Proximity Results</h1>
-        <div id="visualization" class="tab-content visualization-section">
+        <div id="search" class="tab-content">
             <form action="{{ url_for('find_similar') }}" method="POST">
                 <label for="fileName">Document Name:</label>
                 <input type="text" id="fileName" name="fileName" required>
@@ -60,6 +61,34 @@
                 {% endif %}
             </div>
         </div>
+
+        <!-- All Pairs Section -->
+        <div id="all_pairs" class="tab-content">
+            <h3>All Similar Pairs in All Clusters</h3>
+            <table>
+                <tr>
+                    <th>Cluster</th>
+                    <th>Document 1</th>
+                    <th>Document 2</th>
+                    <th>Word Count 1</th>
+                    <th>Word Count 2</th>
+                    <th>Similarity</th>
+                </tr>
+                {% for cluster_id, pairs in cluster_similarities.items() %}
+                    {% for pair in pairs %}
+                        <tr>
+                            <td>{{ cluster_id }}</td>
+                            <td>{{ doc_names[pair[0]] }}</td>
+                            <td>{{ doc_names[pair[1]] }}</td>
+                            <td>{{ word_counts[pair[0]] }}</td>
+                            <td>{{ word_counts[pair[1]] }}</td>
+                            <td>{{ pair[2]|default(0)|round(4) }}</td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+
         <div id="clusters" class="tab-content">
             {% for label, docs in clusters.items() %}
                 <div id="cluster-{{ label }}" class="cluster-section">
@@ -133,31 +162,14 @@
             showTab('clusters');
         }
 
-        function showVisualization() {
-            // Hide all cluster sections
-            var sections = document.getElementsByClassName('cluster-section');
-            for (var i = 0; i < sections.length; i++) {
-                sections[i].classList.remove('active');
-            }
-
-            // Show the visualization section
-            var visualizationSection = document.getElementById('visualization');
-            if (visualizationSection) {
-                visualizationSection.classList.add('active');
-            }
-        }
-
         function showTab(tabId) {
-            // Hide all tab content
             var tabs = document.getElementsByClassName('tab-content');
             for (var i = 0; i < tabs.length; i++) {
-                tabs[i].classList.remove('active');
+                tabs[i].style.display = 'none';  // Hide all tabs
             }
-
-            // Show the selected tab content
             var selectedTab = document.getElementById(tabId);
             if (selectedTab) {
-                selectedTab.classList.add('active');
+                selectedTab.style.display = 'block';  // Show the selected tab
             }
         }
 
@@ -202,7 +214,7 @@
 
         // Initialize the first tab as active
         document.addEventListener('DOMContentLoaded', function() {
-            showTab('visualization');
+            showTab('search');
         });
     </script>
 </body>
