@@ -4,46 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lexiacal Proximity</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        form { margin-top: 20px; }
-        label { display: block; margin: 15px 0 5px; }
-        input, button { padding: 10px; }
-        button { cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
-        button:hover { background-color: #45a049; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <h1>Upload Documents</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <label for="zipFile">Upload ZIP File:</label>
-        <input type="file" name="zipFile" id="zipFile" accept=".zip" required>
+<body class="first">
+    <h1 class="main-title">Determine Lexical Proximity</h1>
+    <form id="uploadForm" class="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+        
+        <div class="section similarity-threshold">
+            <h2 class="section-title">Documents to analyze</h2>
+            <label for="zipFile" class="form-label">ZIP of .txt documents:</label>
+            <input type="file" name="zipFile" id="zipFile" class="form-input" accept=".zip" required>
 
-        <div class="section">
-            <h2>Min-Hash Parameters</h2>
-            <label for="shingleSize">Shingle Size:</label>
-            <input type="number" name="shingleSize" id="shingleSize" value="3" required>
+            <label for="similarityThreshold" class="form-label">Similarity Threshold:</label>
+            <input type="number" step="0.01" name="similarityThreshold" id="similarityThreshold" class="form-input" value="0.5" required>
+        </div>
+        <div class="section min-hash-parameters">
+            <h2 class="section-title">Min-Hash Parameters</h2>
+            <label for="shingleSize" class="form-label">Shingle Size:</label>
+            <input type="number" name="shingleSize" id="shingleSize" class="form-input" value="3" required>
 
-            <label for="numHashes">Number of Hash Functions:</label>
-            <input type="number" name="numHashes" id="numHashes" value="100" required>
+            <label for="numHashes" class="form-label">Number of Hash Functions:</label>
+            <input type="number" name="numHashes" id="numHashes" class="form-input" value="100" required>
         </div>
 
-        <div class="section">
-            <h2>Clustering Parameters</h2>
-            <label for="vectorSize">Vector Size:</label>
-            <input type="number" name="vectorSize" id="vectorSize" value="300" required>
+        <div class="section clustering-parameters">
+            <h2 class="section-title">Clustering Parameters</h2>
+            <label for="vectorSize" class="form-label">Vector Size:</label>
+            <input type="number" name="vectorSize" id="vectorSize" class="form-input" value="300" required>
 
-            <label for="numClusters">Number of Clusters:</label>
-            <input type="number" name="numClusters" id="numClusters" value="10" required>
+            <label for="numClusters" class="form-label">Number of Clusters:</label>
+            <input type="number" name="numClusters" id="numClusters" class="form-input" value="10" required>
         </div>
+        <button type="submit" class="submit-button">Get similarity</button>
 
-        <div class="section">
-            <h2>Similarity Threshold</h2>
-            <label for="similarityThreshold">Similarity Threshold:</label>
-            <input type="number" step="0.01" name="similarityThreshold" id="similarityThreshold" value="0.5" required>
-        </div>
-
-        <input type="submit" value="Upload">
     </form>
     <div id="pleaseWaitMessage" class="please-wait">Please wait, processing the upload...</div>
     <script>

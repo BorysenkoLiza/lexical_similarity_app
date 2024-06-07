@@ -4,32 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results of Document Clustering</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; display: flex; }
-        h1, h2, h3, h4 { color: #333; }
-        ul { list-style-type: none; padding: 0; }
-        li { margin-bottom: 10px; }
-        .sidebar { width: 200px; background-color: #f4f4f4; padding: 20px; height: 100vh; position: fixed; overflow-y: auto; }
-        .content { margin-left: 220px; padding: 20px; width: calc(100% - 220px); }
-        .cluster-section { display: none; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-        th { background-color: #f2f2f2; }
-        .active { display: block; }
-        .tab-menu { display: flex; margin-bottom: 20px; }
-        .tab-menu button { padding: 10px 20px; border: none; background-color: #f4f4f4; cursor: pointer; }
-        .tab-menu button.active { background-color: #ddd; }
-        .two-column { display: flex; flex-direction: row; }
-        .column { flex: 1; padding: 10px; }
-        .visualization img { max-width: 100%; height: auto; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="sidebar">
         <h2>Menu</h2>
         <ul>
-            <li><a href="#" onclick="showTab('search')">Search</a></li>
-            <li><a href="#" onclick="showTab('all_pairs')">All Pairs</a></li>
+            <li><a href="#" onclick="showTab('search')">Search for Similar documents</a></li>
+            <li><a href="#" onclick="showTab('all_pairs')">All Similar Docments</a></li>
             <li><a href="#" onclick="showTab('clustering_summary')">Clustering Summary</a></li>
             {% for label in clusters.keys() %}
                 <li><a href="#" onclick="showCluster({{ label }})">Cluster {{ label }}</a></li>
@@ -41,8 +23,8 @@
         <div id="search" class="tab-content">
             <form action="{{ url_for('find_similar') }}" method="POST">
                 <label for="fileName">Document Name:</label>
-                <input type="text" id="fileName" name="fileName" required>
-                <button type="submit">Find Similar Documents</button>
+                <input type="text" id="fileName" class="filename" name="fileName" required >
+                <button type="submit" class="submit-button">Find Similar Documents</button>
             </form>
             <!-- Placeholder for displaying similar documents -->
             <div id="similar-documents">
@@ -97,33 +79,33 @@
         </div>
 
          <!-- Clustering Summary Section -->
-         <div id="clustering_summary" class="tab-content two-column">
-            <div class="column">
-                <h3>Clustering Summary</h3>
-                <table>
-                    <tr>
-                        <th>Cluster</th>
-                        <th>Number of Documents</th>
-                        <th>Most Common Terms</th>
-                    </tr>
-                    {% for cluster_id, docs in clusters.items() %}
+         <div id="clustering_summary" class="tab-content">
+            <div class="two-column">
+                <div class="column">
+                    <h3>Clustering Summary</h3>
+                    <table>
                         <tr>
-                            <td>{{ cluster_id }}</td>
-                            <td>{{ docs|length }}</td>
-                            <td>
-                                <ul>
+                            <th>Cluster</th>
+                            <th>Number of Documents</th>
+                            <th>Most Common Terms</th>
+                        </tr>
+                        {% for cluster_id, docs in clusters.items() %}
+                            <tr>
+                                <td>{{ cluster_id }}</td>
+                                <td>{{ docs|length }}</td>
+                                <td>
                                     {% for term, count in cluster_top_terms[cluster_id] %}
                                         {{ term }},
-                                    {% endfor %}
-                                </ul>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </table>
-            </div>
-            <div class="column visualization">
-                <h3>Clustering Visualization</h3>
-                <img src="{{ url_for('static', filename='cluster_visualization.png') }}" alt="Cluster Visualization">
+                                     {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                <div class="column visualization">
+                    <h3>Clustering Visualization</h3>
+                    <img src="{{ url_for('static', filename='cluster_visualization.png') }}" alt="Cluster Visualization">
+                </div>
             </div>
         </div>
 
@@ -141,13 +123,10 @@
                         </tr>
                         <tr>
                             <td>
-                                <ul id="doc-list-{{ label }}">
-                                {% for doc in docs[:10] %}
-                                        <li>{{ doc['DocName'] }}</li>
-                                    {% endfor %}
-                                    {% if docs|length > 10 %}
-                                        <li><span class="show-more" onclick="showAllDocuments({{ label }})">Show All</span></li>
-                                {% endif %}
+                                <ul>
+                                {% for doc in docs %}
+                                    <li>{{ doc['DocName'] }}</li>
+                                {% endfor %}  
                                 </ul>
                             </td>
                             <td>
@@ -158,23 +137,17 @@
                                 </ul>
                             </td>
                             <td>
-                                <ul id="similar-docs-{{ label }}">
-                                    {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
+                                <ul >
+                                    {% for doc1, doc2, similarity in cluster_similarities[label] %}
                                         <li>{{ doc_names[doc1] }} & {{ doc_names[doc2] }}</li>
                                     {% endfor %}
-                                    {% if cluster_similarities[label]|length > 10 %}
-                                        <li><span class="show-more" onclick="showAllSimilar({{ label }})">Show All</span></li>
-                                    {% endif %}
                                 </ul>
                             </td>
                             <td>
                                 <ul id="similar-scores-{{ label }}">
-                                    {% for doc1, doc2, similarity in cluster_similarities[label][:10] %}
+                                    {% for doc1, doc2, similarity in cluster_similarities[label] %}
                                         <li>{{ similarity|round(4) }}</li>
                                     {% endfor %}
-                                    {% if cluster_similarities[label]|length > 10 %}
-                                        <li>...</li>
-                                    {% endif %}
                                 </ul>
                             </td>
                         </tr>
@@ -183,78 +156,6 @@
             {% endfor %}
         </div>
     </div>
-    <script>
-        function showCluster(clusterId) {
-            // Hide all cluster sections
-            var sections = document.getElementsByClassName('cluster-section');
-            for (var i = 0; i < sections.length; i++) {
-                sections[i].classList.remove('active');
-            }
-
-            // Show the selected cluster section
-            var selectedSection = document.getElementById('cluster-' + clusterId);
-            if (selectedSection) {
-                selectedSection.classList.add('active');
-            }
-
-            // Switch to the clusters tab
-            showTab('clusters');
-        }
-
-        function showTab(tabId) {
-            var tabs = document.getElementsByClassName('tab-content');
-            for (var i = 0; i < tabs.length; i++) {
-                tabs[i].style.display = 'none';  // Hide all tabs
-            }
-            var selectedTab = document.getElementById(tabId);
-            if (selectedTab) {
-                selectedTab.style.display = 'block';  // Show the selected tab
-            }
-        }
-
-        function showAllDocuments(clusterId) {
-            // Get the full list of documents for the cluster
-            var docList = document.getElementById('doc-list-' + clusterId);
-
-            // Replace the content with the full list
-            docList.innerHTML = '';
-            var docs = {{ clusters|tojson }};
-            docs[clusterId].forEach(function(doc) {
-                var li = document.createElement('li');
-                li.textContent = doc['DocName'] + ' (ID: ' + doc['DocID'] + ')';
-                docList.appendChild(li);
-            });
-        }
-
-        function showAllSimilar(clusterId) {
-            var similarDocsList = document.getElementById('similar-docs-' + clusterId);
-            var similarScoresList = document.getElementById('similar-scores-' + clusterId);
-
-            similarDocsList.innerHTML = '';
-            similarScoresList.innerHTML = '';
-
-            var allSimilarDocs = {{ cluster_similarities | tojson }};
-            var allDocNames = {{ doc_names | tojson }};
-
-            allSimilarDocs[clusterId].forEach(function(pair) {
-                var doc1 = pair[0];
-                var doc2 = pair[1];
-                var similarity = pair[2];
-
-                var docItem = document.createElement('li');
-                docItem.innerHTML = allDocNames[doc1] + ' & ' + allDocNames[doc2];
-                similarDocsList.appendChild(docItem);
-
-                var scoreItem = document.createElement('li');
-                scoreItem.innerHTML = similarity.toFixed(4);
-                similarScoresList.appendChild(scoreItem);
-            });
-        }
-
-        // Initialize the first tab as active
-        document.addEventListener('DOMContentLoaded', function() {
-            showTab('search');
-        });
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
