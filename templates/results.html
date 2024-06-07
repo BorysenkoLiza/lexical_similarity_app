@@ -11,7 +11,7 @@
         li { margin-bottom: 10px; }
         .sidebar { width: 200px; background-color: #f4f4f4; padding: 20px; height: 100vh; position: fixed; overflow-y: auto; }
         .content { margin-left: 220px; padding: 20px; width: calc(100% - 220px); }
-        .cluster-section, .visualization-section { display: none; }
+        .cluster-section { display: none; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
         th { background-color: #f2f2f2; }
@@ -19,6 +19,9 @@
         .tab-menu { display: flex; margin-bottom: 20px; }
         .tab-menu button { padding: 10px 20px; border: none; background-color: #f4f4f4; cursor: pointer; }
         .tab-menu button.active { background-color: #ddd; }
+        .two-column { display: flex; flex-direction: row; }
+        .column { flex: 1; padding: 10px; }
+        .visualization img { max-width: 100%; height: auto; }
     </style>
 </head>
 <body>
@@ -94,28 +97,34 @@
         </div>
 
          <!-- Clustering Summary Section -->
-         <div id="clustering_summary" class="tab-content">
-            <h3>Clustering Summary</h3>
-            <table>
-                <tr>
-                    <th>Cluster</th>
-                    <th>Number of Documents</th>
-                    <th>Most Common Terms</th>
-                </tr>
-                {% for cluster_id, docs in clusters.items() %}
+         <div id="clustering_summary" class="tab-content two-column">
+            <div class="column">
+                <h3>Clustering Summary</h3>
+                <table>
                     <tr>
-                        <td>{{ cluster_id }}</td>
-                        <td>{{ docs|length }}</td>
-                        <td>
-                            <ul>
-                                {% for term, count in cluster_top_terms[cluster_id] %}
-                                    {{ term }},
-                                {% endfor %}
-                            </ul>
-                        </td>
+                        <th>Cluster</th>
+                        <th>Number of Documents</th>
+                        <th>Most Common Terms</th>
                     </tr>
-                {% endfor %}
-            </table>
+                    {% for cluster_id, docs in clusters.items() %}
+                        <tr>
+                            <td>{{ cluster_id }}</td>
+                            <td>{{ docs|length }}</td>
+                            <td>
+                                <ul>
+                                    {% for term, count in cluster_top_terms[cluster_id] %}
+                                        {{ term }},
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div class="column visualization">
+                <h3>Clustering Visualization</h3>
+                <img src="{{ url_for('static', filename='cluster_visualization.png') }}" alt="Cluster Visualization">
+            </div>
         </div>
 
 

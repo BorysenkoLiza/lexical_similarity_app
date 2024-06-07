@@ -171,7 +171,7 @@ class SemanticClusterer:
 
         # Print silhouette values for each cluster
         self.print_silhouette_scores(labels, sample_silhouette_values)
-        self.visualize_clusters(vectors, labels, method='pca') 
+        self.visualize_clusters(vectors, labels, method='pca', filename='static/cluster_visualization.png')
         return labels, silhouette_avg
     
     def print_silhouette_scores(self, labels, sample_silhouette_values):
@@ -239,14 +239,15 @@ class SemanticClusterer:
         logger.info("Finished processing documents.")
         return documents_df, silhouette, top_terms
     
-    def visualize_clusters(self, vectors, labels, method='pca'):
+    def visualize_clusters(self, vectors, labels, method='pca', filename='cluster_visualization.png'):
         """
-        Visualize the clustered document vectors using PCA or t-SNE.
+        Visualize the clustered document vectors using PCA or t-SNE and save the plot as an image.
         
         Parameters:
             vectors (np.array): Document vectors.
             labels (np.array): Cluster labels for each document.
             method (str): Method for dimensionality reduction ('pca' or 'tsne').
+            filename (str): Filename for saving the image.
         """
         if method == 'pca':
             reducer = PCA(n_components=2)
@@ -273,4 +274,5 @@ class SemanticClusterer:
         plt.title('Cluster Visualization')
         plt.legend()
         plt.grid(True)
-        plt.show()
+        plt.savefig(filename)
+        plt.close()

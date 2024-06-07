@@ -136,13 +136,15 @@ def results():
     file_name = session.get('file_name', None)
     doc_names = {row['DocID']: row['DocName'] for index, row in results['documents_df'].iterrows()}
     word_counts = results['word_counts']
+    total_similar_pairs = sum(len(pairs) for pairs in results['cluster_similarities'].values())
     return render_template('results.html', clusters=results['clusters'], 
                            cluster_top_terms=results['cluster_top_terms'], 
                            cluster_similarities=results['cluster_similarities'], 
                            similar_docs=similar_docs, 
                            file_name=file_name,
                            doc_names=doc_names,
-                           word_counts=word_counts)
+                           word_counts=word_counts,
+                           total_similar_pairs=total_similar_pairs)
 
 @app.route('/find_similar', methods=['POST'])
 def find_similar():
