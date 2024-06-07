@@ -27,6 +27,7 @@
         <ul>
             <li><a href="#" onclick="showTab('search')">Search</a></li>
             <li><a href="#" onclick="showTab('all_pairs')">All Pairs</a></li>
+            <li><a href="#" onclick="showTab('clustering_summary')">Clustering Summary</a></li>
             {% for label in clusters.keys() %}
                 <li><a href="#" onclick="showCluster({{ label }})">Cluster {{ label }}</a></li>
             {% endfor %}
@@ -65,6 +66,7 @@
         <!-- All Pairs Section -->
         <div id="all_pairs" class="tab-content">
             <h3>All Similar Pairs in All Clusters</h3>
+            <p>Total number of similar pairs: {{ total_similar_pairs }}</p>
             <table>
                 <tr>
                     <th>Cluster</th>
@@ -74,6 +76,7 @@
                     <th>Word Count 2</th>
                     <th>Similarity</th>
                 </tr>
+                {% set row_number = 1 %}
                 {% for cluster_id, pairs in cluster_similarities.items() %}
                     {% for pair in pairs %}
                         <tr>
@@ -84,10 +87,37 @@
                             <td>{{ word_counts[pair[1]] }}</td>
                             <td>{{ pair[2]|default(0)|round(4) }}</td>
                         </tr>
+                        {% set row_number = row_number + 1 %}
                     {% endfor %}
                 {% endfor %}
             </table>
         </div>
+
+         <!-- Clustering Summary Section -->
+         <div id="clustering_summary" class="tab-content">
+            <h3>Clustering Summary</h3>
+            <table>
+                <tr>
+                    <th>Cluster</th>
+                    <th>Number of Documents</th>
+                    <th>Most Common Terms</th>
+                </tr>
+                {% for cluster_id, docs in clusters.items() %}
+                    <tr>
+                        <td>{{ cluster_id }}</td>
+                        <td>{{ docs|length }}</td>
+                        <td>
+                            <ul>
+                                {% for term, count in cluster_top_terms[cluster_id] %}
+                                    {{ term }},
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+
 
         <div id="clusters" class="tab-content">
             {% for label, docs in clusters.items() %}
